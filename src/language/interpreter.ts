@@ -868,7 +868,7 @@ const interpretForWithStart = (
         return CommandResult.Halt;
     }
 
-    const startValue = mValueToNumber(state.valueStack.pop()!);
+    const startValue = state.valueStack.pop()!;
 
     if (!setVariable(variable, startValue, state)) {
         return CommandResult.Halt;
@@ -981,35 +981,48 @@ const interpretFor = (node: ForAstNode, state: InterpreterState): CommandResult 
         return interpretForWithNoArg(node.children, state);
     }
 
-    switch (node.arg.expressions.length) {
-        case 1:
-            return interpretForWithStart(
-                node.arg.variable,
-                node.arg.expressions[0],
-                node.children,
-                state,
-            );
-        case 2:
-            return interpretForWithStartIncrement(
-                node.arg.variable,
-                node.arg.expressions[0],
-                node.arg.expressions[1],
-                node.children,
-                state,
-            );
-        case 3:
-            return interpretForWithStartIncrementEnd(
-                node.arg.variable,
-                node.arg.expressions[0],
-                node.arg.expressions[1],
-                node.arg.expressions[2],
-                node.children,
-                state,
-            );
-        default:
-            reportError("Invalid number of expressions in for argument", node, state);
-            return CommandResult.Halt;
+    for (const parameter of node.arg.parameters) {
+        let result;
+
+        switch (parameter.expressions.length) {
+            case 1:
+                result = interpretForWithStart(
+                    node.arg.variable,
+                    parameter.expressions[0],
+                    node.children,
+                    state,
+                );
+                break;
+            case 2:
+                result = interpretForWithStartIncrement(
+                    node.arg.variable,
+                    parameter.expressions[0],
+                    parameter.expressions[1],
+                    node.children,
+                    state,
+                );
+                break;
+            case 3:
+                result = interpretForWithStartIncrementEnd(
+                    node.arg.variable,
+                    parameter.expressions[0],
+                    parameter.expressions[1],
+                    parameter.expressions[2],
+                    node.children,
+                    state,
+                );
+                break;
+            default:
+                reportError(`Invalid number of expressions in for parameter: ${parameter.expressions.length}`, node, state);
+                return CommandResult.Halt;
+        }
+
+        if (result !== CommandResult.Continue) {
+            return result;
+        }
     }
+
+    return CommandResult.Continue;
 };
 
 const replaceStringRange = (destination: string, source: string, start: number, end: number) => {

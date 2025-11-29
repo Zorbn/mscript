@@ -172,6 +172,7 @@ i: 3
 i: 4
 i: 5`,
     );
+
     assertScript(
         ` f i=1:1 q:i>3  w !,"i: ",i`,
         `
@@ -179,11 +180,25 @@ i: 1
 i: 2
 i: 3`,
     );
+
     assertScript(
         ` f i=1 w !,"i: ",i`,
         `
 i: 1`,
     );
+
+    assertScript(
+        ` f i=1:1:3,"hi","there",7:1:9 w !,"i: ",i`,
+        `
+i: 1
+i: 2
+i: 3
+i: hi
+i: there
+i: 7
+i: 8
+i: 9`
+    )
 });
 
 test("logical and/or", () => {

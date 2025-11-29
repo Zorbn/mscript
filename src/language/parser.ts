@@ -12,6 +12,9 @@ export const enum AstNodeKind {
     If,
     For,
     ForArgument,
+    // Not a great name for a piece of an argument,
+    // but this is what the standard calls it.
+    ForParameter,
     Else,
     SetArgument,
     Set,
@@ -97,11 +100,16 @@ export interface IfAstNode extends TextRange {
     children: CommandAstNode[];
 }
 
+export interface ForParameterAstNode extends TextRange {
+    kind: AstNodeKind.ForParameter;
+    // Either start, start:increment, or start:increment:end.
+    expressions: ExpressionAstNode[];
+}
+
 export interface ForArgumentAstNode extends TextRange {
     kind: AstNodeKind.ForArgument;
     variable: VariableAstNode;
-    // Either start, start:increment, or start:increment:end.
-    expressions: ExpressionAstNode[];
+    parameters: ForParameterAstNode[];
 }
 
 export interface ForAstNode extends TextRange {
@@ -1261,18 +1269,8 @@ const parseElse = (input: Token[][], state: ParserState): ElseAstNode | undefine
     };
 };
 
-const parseForArgument = (input: Token[][], state: ParserState): ForArgumentAstNode | undefined => {
-    const variable = parseVariable(input, state);
-
-    if (!variable) {
-        return;
-    }
-
-    if (!matchToken(input, state, TokenKind.Equals)) {
-        reportError("Expected equals after for loop variable", input, state);
-        return;
-    }
-
+const parseForParameter = (input: Token[][], state: ParserState): ForParameterAstNode | undefined => {
+    const firstToken = getToken(input, state);
     const expressions = [];
 
     for (let i = 0; i < 3; i++) {
@@ -1292,9 +1290,47 @@ const parseForArgument = (input: Token[][], state: ParserState): ForArgumentAstN
     const lastToken = getToken(input, state);
 
     return {
+        kind: AstNodeKind.ForParameter,
+        expressions,
+        start: firstToken.start,
+        end: lastToken.start,
+    };
+};
+
+const parseForArgument = (input: Token[][], state: ParserState): ForArgumentAstNode | undefined => {
+    const variable = parseVariable(input, state);
+
+    if (!variable) {
+        return;
+    }
+
+    if (!matchToken(input, state, TokenKind.Equals)) {
+        reportError("Expected equals after for loop variable", input, state);
+        return;
+    }
+
+    const parameters = [];
+
+    while (true) {
+        const parameter = parseForParameter(input, state);
+
+        if (!parameter) {
+            return;
+        }
+
+        parameters.push(parameter);
+
+        if (!matchToken(input, state, TokenKind.Comma)) {
+            break;
+        }
+    }
+
+    const lastToken = getToken(input, state);
+
+    return {
         kind: AstNodeKind.ForArgument,
         variable,
-        expressions,
+        parameters,
         start: variable.start,
         end: lastToken.start,
     };
